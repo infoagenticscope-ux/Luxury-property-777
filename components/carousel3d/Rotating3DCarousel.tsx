@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { Property } from "@/types/property";
 import { formatGBP } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Pause, Play, Sparkles, Compass, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Compass, Eye } from "lucide-react";
 
 interface Rotating3DCarouselProps {
   properties: Property[];
@@ -15,33 +15,22 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
   properties,
   onSelect,
 }) => {
-  // Display exactly 5 premier estates rotating in circular rotunda (4 user-uploaded property assets + Cotswolds Horizon Manor)
-  const carouselItems = React.useMemo(() => {
-    const targetIds = [
-      "lux-user-01",
-      "lux-user-02",
-      "lux-user-03",
-      "lux-user-04",
-      "lux-mansion-01",
-    ];
-    const matches = targetIds
-      .map((id) => properties.find((p) => p.id === id))
-      .filter((p): p is Property => Boolean(p));
-
-    if (matches.length === 5) return matches;
-
-    return properties
-      .filter(
-        (p) =>
-          !["lux-user-alpine", "lux-user-sunset", "lux-user-solaria"].includes(
-            p.id
-          )
-      )
-      .slice(0, 5);
+  // Restore original Turn 1 sequence: 4 user-supplied assets + 2 country estates
+  // 1. Belgravia Crescent Residence (user-property-1.jpg)
+  // 2. Wentworth Fairway Villa (user-property-2.jpg)
+  // 3. Kensington Private Mews (user-property-3.jpg)
+  // 4. Knightsbridge Garden Pavilion (user-property-4.jpg)
+  // 5. Cotswolds Horizon Manor (mansion-sunset.png)
+  // 6. Windermere Waterfront Estate (mansion-lakeside.png)
+  const carouselItems = useMemo(() => {
+    const originalList = properties.filter(
+      (p) => !["lux-user-alpine", "lux-user-sunset", "lux-user-solaria"].includes(p.id)
+    );
+    return originalList.slice(0, 6);
   }, [properties]);
 
-  const itemCount = carouselItems.length; // Exactly 5 cards
-  const angleStep = 360 / itemCount; // 72 degrees per card
+  const itemCount = carouselItems.length || 6;
+  const angleStep = 360 / itemCount; // 60 degrees for 6 cards
 
   const [rotationAngle, setRotationAngle] = useState(0);
   const [isAutoRotating, setIsAutoRotating] = useState(true);
@@ -50,17 +39,17 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
   const [touchDelta, setTouchDelta] = useState(0);
   const animFrameRef = useRef<number | null>(null);
 
-  // Responsive radius calculation for 5 circular cards
-  const [radius, setRadius] = useState(390);
+  // Responsive radius calculation matching the original geometry
+  const [radius, setRadius] = useState(420);
 
   useEffect(() => {
     const updateRadius = () => {
       if (window.innerWidth < 640) {
-        setRadius(240); // Mobile radius
+        setRadius(260); // Mobile radius
       } else if (window.innerWidth < 1024) {
-        setRadius(320); // Tablet radius
+        setRadius(340); // Tablet radius
       } else {
-        setRadius(390); // Desktop luxury radius
+        setRadius(420); // Desktop luxury radius
       }
     };
 
@@ -69,7 +58,7 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
     return () => window.removeEventListener("resize", updateRadius);
   }, []);
 
-  // Smooth slow auto-rotation loop
+  // Continuous smooth auto-rotation loop without modulo jumps
   useEffect(() => {
     if (!isAutoRotating || isHovered) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -81,8 +70,8 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
     const loop = (currentTime: number) => {
       const delta = currentTime - lastTime;
       lastTime = currentTime;
-      // Gentle cinematic speed: ~3 degrees per second
-      setRotationAngle((prev) => (prev + (delta * 0.025)) % 360);
+      // Gentle cinematic rotation pace (~2.8 degrees per second)
+      setRotationAngle((prev) => prev + delta * 0.026);
       animFrameRef.current = requestAnimationFrame(loop);
     };
 
@@ -93,13 +82,13 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
     };
   }, [isAutoRotating, isHovered]);
 
-  const handlePrev = () => {
-    setRotationAngle((prev) => prev - angleStep);
-  };
+  const handlePrev = useCallback(() => {
+    setRotationAngle((prev) => Math.round(prev / angleStep) * angleStep - angleStep);
+  }, [angleStep]);
 
-  const handleNext = () => {
-    setRotationAngle((prev) => prev + angleStep);
-  };
+  const handleNext = useCallback(() => {
+    setRotationAngle((prev) => Math.round(prev / angleStep) * angleStep + angleStep);
+  }, [angleStep]);
 
   // Touch gesture support
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -150,6 +139,7 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
 
         {/* ============================================================== */}
         {/* 3D PERSPECTIVE CYLINDER CONTAINER */}
+        {/* Perfectly centered at 50% 50% so all cards stay on the horizontal plane */}
         {/* ============================================================== */}
         <div
           className="relative w-full h-[460px] sm:h-[540px] flex items-center justify-center overflow-visible select-none"
@@ -160,15 +150,16 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
           onTouchEnd={handleTouchEnd}
           style={{
             perspective: "1200px",
-            perspectiveOrigin: "50% 48%",
+            perspectiveOrigin: "50% 50%", // Fixed: 50% 50% keeps cards level on the same horizon line
           }}
         >
           {/* Rotating Ring */}
           <div
-            className="relative w-[280px] sm:w-[320px] h-[360px] sm:h-[420px] preserve-3d"
+            className="relative w-[280px] sm:w-[320px] h-[360px] sm:h-[420px]"
             style={{
+              transformStyle: "preserve-3d",
               transform: `rotateY(${-rotationAngle}deg)`,
-              transition: isHovered || touchStartX !== null ? "none" : "transform 0.4s ease-out",
+              transition: isHovered || touchStartX !== null ? "none" : (isAutoRotating ? "none" : "transform 0.4s ease-out"),
             }}
           >
             {carouselItems.map((item, index) => {
@@ -180,11 +171,18 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
                   onClick={() => onSelect(item)}
                   style={{
                     transform: `rotateY(${cardAngle}deg) translateZ(${radius}px)`,
+                    transformStyle: "preserve-3d",
+                    backfaceVisibility: "hidden", // Fixed: hides reversed/mirrored back side of cards
+                    WebkitBackfaceVisibility: "hidden",
                   }}
-                  className="absolute inset-0 w-full h-full rounded-2xl sm:rounded-3xl overflow-hidden glass-card border border-gold-400/35 cursor-pointer shadow-[0_20px_50px_rgba(0,0,0,0.85)] group transition-all duration-500 hover:border-gold-300"
+                  className="absolute inset-0 w-full h-full rounded-2xl sm:rounded-3xl overflow-hidden glass-panel border border-gold-400/35 cursor-pointer shadow-[0_20px_50px_rgba(0,0,0,0.85)] group transition-colors duration-300 hover:border-gold-300"
                 >
                   {/* Top Edge Crystal Reflection Line */}
                   <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/60 via-gold-300/80 to-transparent opacity-80 z-30 pointer-events-none" />
+
+                  {/* Frosted Glass Shimmer Overlay on hover */}
+                  <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-tr from-transparent via-white/5 to-gold-400/10 z-20" />
+
                   {/* Property Image */}
                   <div className="relative w-full h-[62%] overflow-hidden bg-black/50">
                     <Image
@@ -197,7 +195,7 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0E1017] via-transparent to-black/30" />
 
                     {/* Top Pill */}
-                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
                       <span className="px-2.5 py-1 rounded-full text-[9px] uppercase font-bold tracking-wider bg-black/70 text-gold-300 border border-gold-400/30 backdrop-blur-md">
                         {item.category}
                       </span>

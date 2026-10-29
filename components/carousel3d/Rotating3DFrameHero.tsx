@@ -194,6 +194,9 @@ export const Rotating3DFrameHero: React.FC<Rotating3DFrameHeroProps> = ({
                   onClick={() => onSelectProperty(item)}
                   style={{
                     transform: `rotateY(${cardAngle}deg) translateZ(${radius}px)`,
+                    transformStyle: "preserve-3d",
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden",
                   }}
                   className="absolute inset-0 w-full h-full rounded-3xl overflow-hidden glass-card border border-gold-400/40 cursor-pointer shadow-[0_25px_70px_rgba(0,0,0,0.9)] group transition-all duration-500 hover:border-gold-300 flex flex-col justify-between"
                 >
