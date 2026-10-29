@@ -15,10 +15,33 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
   properties,
   onSelect,
 }) => {
-  // Use first 6 luxury properties (including user supplied assets)
-  const carouselItems = properties.slice(0, 6);
-  const itemCount = carouselItems.length;
-  const angleStep = 360 / itemCount;
+  // Display exactly 5 premier estates rotating in circular rotunda (4 user-uploaded property assets + Cotswolds Horizon Manor)
+  const carouselItems = React.useMemo(() => {
+    const targetIds = [
+      "lux-user-01",
+      "lux-user-02",
+      "lux-user-03",
+      "lux-user-04",
+      "lux-mansion-01",
+    ];
+    const matches = targetIds
+      .map((id) => properties.find((p) => p.id === id))
+      .filter((p): p is Property => Boolean(p));
+
+    if (matches.length === 5) return matches;
+
+    return properties
+      .filter(
+        (p) =>
+          !["lux-user-alpine", "lux-user-sunset", "lux-user-solaria"].includes(
+            p.id
+          )
+      )
+      .slice(0, 5);
+  }, [properties]);
+
+  const itemCount = carouselItems.length; // Exactly 5 cards
+  const angleStep = 360 / itemCount; // 72 degrees per card
 
   const [rotationAngle, setRotationAngle] = useState(0);
   const [isAutoRotating, setIsAutoRotating] = useState(true);
@@ -27,17 +50,17 @@ export const Rotating3DCarousel: React.FC<Rotating3DCarouselProps> = ({
   const [touchDelta, setTouchDelta] = useState(0);
   const animFrameRef = useRef<number | null>(null);
 
-  // Responsive radius calculation
-  const [radius, setRadius] = useState(380);
+  // Responsive radius calculation for 5 circular cards
+  const [radius, setRadius] = useState(390);
 
   useEffect(() => {
     const updateRadius = () => {
       if (window.innerWidth < 640) {
-        setRadius(260); // Mobile radius
+        setRadius(240); // Mobile radius
       } else if (window.innerWidth < 1024) {
-        setRadius(340); // Tablet radius
+        setRadius(320); // Tablet radius
       } else {
-        setRadius(420); // Desktop luxury radius
+        setRadius(390); // Desktop luxury radius
       }
     };
 

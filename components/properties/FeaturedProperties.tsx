@@ -14,8 +14,16 @@ export const FeaturedProperties: React.FC<FeaturedPropertiesProps> = ({
   properties,
   onSelectProperty,
 }) => {
-  // Filter user-supplied & primary featured residences
-  const featuredList = properties.filter((p) => p.isUserSuppliedImage || p.isFeatured).slice(0, 6);
+  // Filter user-supplied & primary featured residences (excluding the 3 hero items to preserve original featured list)
+  const featuredList = properties
+    .filter(
+      (p) =>
+        !["lux-user-alpine", "lux-user-sunset", "lux-user-solaria"].includes(
+          p.id
+        ) &&
+        (p.isUserSuppliedImage || p.isFeatured)
+    )
+    .slice(0, 6);
 
   return (
     <section id="featured-properties" className="w-full py-20 bg-[#08090C] relative">
